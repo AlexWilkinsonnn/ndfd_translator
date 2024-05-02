@@ -1,3 +1,5 @@
 *.root
 *.swp
 .venv*
+
+__pycache__
