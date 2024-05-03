@@ -2,12 +2,13 @@
 Reads in ND reco from CAF, runs Radi's train gpt model to predict FD reco, writes out result to
 friend tree in the ND CAF file.
 NOTE: This is currently hardcoded for the model architecture used for the FHC numu-numu training.
+NOTE: Would be faster with larger batch size but it is too cumbersome to catch failed predictions
+when working with batches
 """
 import argparse, os, time
 from array import array
 
 import ROOT
-import numpy as np
 
 import torch
 
@@ -60,55 +61,27 @@ def main(args):
     t_pred.Branch("pred_fd_numu_nu_E", b_numu_nu_E, "pred_fd_numu_nu_E/F")
 
     # Loop CAF tree to make FD preds
-    nd_recos, passed_cuts = [], []
+    nd_recos = []
+    t_0 = time.time()
     for i_ev, ev in enumerate(t_caf):
-        if passes_sel_cuts(
-            ev.muon_contained, ev.muon_tracker, ev.muon_ecal, ev.reco_numu, ev.Ehad_veto
-        ):
-            passed_cuts.append(True)
-        else:
-            passed_cuts.append(False)
-            continue
-
         nd_recos.append(torch.tensor([[
-            ev.eRecoP, ev.eRecoN, ev.eRecoPip, ev.eRecoPi0, ev.eRecoOther,
+            ev.eRecoP, ev.eRecoN, ev.eRecoPip, ev.eRecoPim, ev.eRecoPi0, ev.eRecoOther,
             ev.Ev_reco,
             ev.Elep_reco,
             ev.theta_reco,
             ev.reco_numu, ev.reco_nc, ev.reco_nue, ev.reco_lepton_pdg
         ]]))
-
-        if len(nd_recos) and (len(nd_recos) % args.batch_size == 0):
-            pred_fd_cvn_batch, pred_fd_E_batch = make_fd_preds(model, nd_recos)
-            for passed in passed_cuts:
-                # We have model predictions for this entry
-                if passed:
-                    pred_fd_cvn = pred_fd_cvn_batch[0]
-                    pred_fd_cvn_batch = pred_fd_cvn_batch[1:]
-                    pred_fd_E = pred_fd_E_batch[0]
-                    pred_fd_E_batch = pred_fd_E_batch[1:]
-                    write_fd_preds_to_branches(pred_fd_cvn=pred_fd_cvn, pred_fd_E=pred_fd_E)
-                # This entry failed the selection cut so no model predicitons for this one
-                else:
-                    write_fd_preds_to_branches()
-                t_pred.Fill()
-            print("{} / {}".format(t_pred.GetEntries(), t_caf.GetEntries()))
-            nd_recos, passed_cuts = [], []
-
-    # Remaining nd_recos that did not form a full batch
-    if passed_cuts:
-        pred_fd_cvn_batch, pred_fd_E_batch = make_fd_preds(model, nd_recos)
-        for passed in passed_cuts:
-            if passed:
-                pred_fd_cvn = pred_fd_cvn_batch[0]
-                pred_fd_cvn_batch = pred_fd_cvn_batch[1:]
-                pred_fd_E = pred_fd_E_batch[0]
-                pred_fd_E_batch = pred_fd_E_batch[1:]
-                write_fd_preds_to_branches(pred_fd_cvn=pred_fd_cvn, pred_fd_E=pred_fd_E)
-            else:
-                write_fd_preds_to_branches()
-            t_pred.Fill()
-        nd_recos, passed_cuts = [], []
+        pred_fd_cvn, pred_fd_E = make_fd_preds(model, nd_recos)
+        write_fd_preds_to_branches(pred_fd_cvn, pred_fd_E)
+        t_pred.Fill()
+        nd_recos = []
+        if (i_ev + 1) % 1000 == 0:
+            print(
+                "{} / {} ({:.2f}s)".format(
+                    t_pred.GetEntries(), t_caf.GetEntries(), time.time() - t_0
+                )
+            )
+            t_0 = time.time()
 
     print("Done!")
 
@@ -129,6 +102,7 @@ def get_model(model_weights):
     model.eval()
     return model
 
+# XXX Not using this anymore
 def passes_sel_cuts(mu_contained, mu_tracker, mu_ecal, reco_numu, Ehad_veto):
     """
     Model was trained only on data that passes these cuts. Predictions are only good for events
@@ -137,14 +111,18 @@ def passes_sel_cuts(mu_contained, mu_tracker, mu_ecal, reco_numu, Ehad_veto):
     """
     return (mu_contained or mu_tracker or mu_ecal) and reco_numu and Ehad_veto > 30
 
+# NOTE assumes batch size is 1
 def make_fd_preds(model, nd_recos):
     in_batch = torch.cat(nd_recos)
     with torch.no_grad():
-        pred_batch = model.generate(in_batch).numpy()
-        pred_fd_batch = pred_batch[:, len(ND_RECO_VARS):]
-        pred_fd_cvn_batch = pred_batch[:, :len(FD_RECO_CVN_VARS)]
-        pred_fd_E_batch = pred_batch[:, len(FD_RECO_CVN_VARS):]
-    return pred_fd_cvn_batch, pred_fd_E_batch
+        try:
+            pred_batch = model.generate(in_batch).numpy()
+        except ValueError:
+            return None, None
+        pred_fd = pred_batch[0, len(ND_RECO_VARS):]
+        pred_fd_cvn = pred_fd[:len(FD_RECO_CVN_VARS)]
+        pred_fd_E = pred_fd[len(FD_RECO_CVN_VARS):]
+    return pred_fd_cvn, pred_fd_E
 
 def write_fd_preds_to_branches(pred_fd_cvn=None, pred_fd_E=None):
     """
@@ -180,8 +158,6 @@ def parse_arguments():
         "infile", type=str, help="input ND CAF file for friend FD pred tree to be added to"
     )
     parser.add_argument("model_weights", type=str)
-
-    parser.add_argument("--batch_size", type=int, default=4, help="batch size for inference")
 
     return parser.parse_args()
 
