@@ -10,7 +10,7 @@ source /cvmfs/dune.opensciencegrid.org/products/dune/setup_dune.sh
 setup root v6_28_12 -q e20:p3915:prof
 python -m venv .venv_3_9_15_torch
 source .venv_3_9_15_torch/bin/activate
-pip install torch
+pip install torch==2.0
 ```
 
 Now you have the virtual environment, just do `source setup.sh`.
