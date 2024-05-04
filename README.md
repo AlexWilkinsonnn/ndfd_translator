@@ -40,6 +40,10 @@ model_weights/
 
 Submit to the grid with:
 ```
-jobsub_submit -G dune -N <N> --disk=10Gb --memory=6000MB --expected-lifetime=2h --cpu=8 --resource-provides=usage_model=DEDICATED,OPPORTUNISTIC,OFFSITE --tar_file_name=dropbox://<path_to_repo>/jobdata.tar.gz --use-cvmfs-dropbox --singularity-image /cvmfs/singularity.opensciencegrid.org/fermilab/fnal-wn-sl7:latest --append_condor_requirements='(TARGET.HAS_Singularity==true&&TARGET.HAS_CVMFS_dune_opensciencegrid_org==true&&TARGET.HAS_CVMFS_larsoft_opensciencegrid_org==true&&TARGET.CVMFS_dune_opensciencegrid_org_REVISION>=1105&&TARGET.HAS_CVMFS_fifeuser1_opensciencegrid_org==true&&TARGET.HAS_CVMFS_fifeuser2_opensciencegrid_org==true&&TARGET.HAS_CVMFS_fifeuser3_opensciencegrid_org==true&&TARGET.HAS_CVMFS_fifeuser4_opensciencegrid_org==true)' file://<path_to_repo>/jobsub_submit.sh <input_dir> <output_dir>
+jobsub_submit -G dune -N <N> --disk=10Gb --memory=6000MB --expected-lifetime=24h --cpu=8 --resource-provides=usage_model=DEDICATED,OPPORTUNISTIC,OFFSITE --tar_file_name=dropbox://<path_to_repo>/jobdata.tar.gz --use-cvmfs-dropbox --singularity-image /cvmfs/singularity.opensciencegrid.org/fermilab/fnal-wn-sl7:latest --append_condor_requirements='(TARGET.HAS_Singularity==true&&TARGET.HAS_CVMFS_dune_opensciencegrid_org==true&&TARGET.HAS_CVMFS_larsoft_opensciencegrid_org==true&&TARGET.CVMFS_dune_opensciencegrid_org_REVISION>=1105&&TARGET.HAS_CVMFS_fifeuser1_opensciencegrid_org==true&&TARGET.HAS_CVMFS_fifeuser2_opensciencegrid_org==true&&TARGET.HAS_CVMFS_fifeuser3_opensciencegrid_org==true&&TARGET.HAS_CVMFS_fifeuser4_opensciencegrid_org==true)' file://<path_to_repo>/jobsub_submit.sh <input_dir> <output_dir>
 ```
 Replacing `<N>` with the number of ND CAF files in the input directory, and `<path_to_repo>,<input_dir>,<output_dir>` with your paths.
+
+## Notes
+
+- If we want to use different architectures or different ND/FD reco vars the code will need to be updated. We should refactor a bit to accomodate this more easily.
