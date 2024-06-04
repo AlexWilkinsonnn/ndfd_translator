@@ -22,6 +22,6 @@ ifdh cp $input_file $input_name
 
 ls -lrth
 
-python ndfd_translate_caf.py $input_name model_weights/model.pt
+python ndfd_translate_caf.py $input_name model_weights/model_fhc_numu-numu_oldg4params.pt
 
 ifdh cp $input_name ${OUTPUT_ND_CAF_DIR}/$input_name
