@@ -5,7 +5,7 @@ NOTE: This is currently hardcoded for the model architecture used for the FHC nu
 NOTE: Would be faster with larger batch size but it is too cumbersome to catch failed predictions
 when working with batches
 """
-import argparse, os, time
+import argparse, time, random
 from array import array
 
 import ROOT
@@ -21,10 +21,13 @@ ND_RECO_VARS = [
     'Ev_reco',
     'Elep_reco',
     'theta_reco',
-    'reco_numu', 'reco_nc', 'reco_nue', 'reco_lepton_pdg'
+    'reco_numu', 'reco_nc', 'reco_nue', 'reco_lepton_pdg',
+    'fd_x_vert', 'fd_y_vert', 'fd_z_vert'
 ]
 FD_RECO_CVN_VARS = [ 'fd_numu_score', 'fd_nue_score', 'fd_nc_score', 'fd_nutau_score' ]
 FD_RECO_E_VARS = [ 'fd_nue_lep_E', 'fd_numu_lep_E', 'fd_numu_nu_E', 'fd_nue_nu_E' ]
+
+FD_VTX_MINMAX = [ (-310.0, 310.0), (-550.0, 550.0), (50.0, 1244.0) ]
 
 def main(args):
     # Prep model
@@ -59,20 +62,31 @@ def main(args):
     global b_numu_nu_E
     b_numu_nu_E = array("f", [0])
     t_pred.Branch("pred_fd_numu_nu_E", b_numu_nu_E, "pred_fd_numu_nu_E/F")
+    global b_vtx_x
+    b_vtx_x = array("f", [0])
+    t_pred.Branch("pred_fd_vtx_x", b_vtx_x, "pred_fd_vtx_x/F")
+    global b_vtx_y
+    b_vtx_y = array("f", [0])
+    t_pred.Branch("pred_fd_vtx_y", b_vtx_y, "pred_fd_vtx_y/F")
+    global b_vtx_z
+    b_vtx_z = array("f", [0])
+    t_pred.Branch("pred_fd_vtx_z", b_vtx_z, "pred_fd_vtx_z/F")
 
     # Loop CAF tree to make FD preds
     nd_recos = []
     t_0 = time.time()
     for i_ev, ev in enumerate(t_caf):
+        fd_vtx = gen_fd_vtx()
         nd_recos.append(torch.tensor([[
             ev.eRecoP, ev.eRecoN, ev.eRecoPip, ev.eRecoPim, ev.eRecoPi0, ev.eRecoOther,
             ev.Ev_reco,
             ev.Elep_reco,
             ev.theta_reco,
-            ev.reco_numu, ev.reco_nc, ev.reco_nue, ev.reco_lepton_pdg
+            ev.reco_numu, ev.reco_nc, ev.reco_nue, ev.reco_lepton_pdg,
+            fd_vtx[0], fd_vtx[1], fd_vtx[2]
         ]]))
         pred_fd_cvn, pred_fd_E = make_fd_preds(model, nd_recos)
-        write_fd_preds_to_branches(pred_fd_cvn, pred_fd_E)
+        write_fd_preds_to_branches(pred_fd_cvn, pred_fd_E, fd_vtx)
         t_pred.Fill()
         nd_recos = []
         if (i_ev + 1) % 1000 == 0:
@@ -102,7 +116,7 @@ def get_model(model_weights):
     model.eval()
     return model
 
-# XXX Not using this anymore
+# XXX Not using this anymore, can just apply selection cuts afterwards
 def passes_sel_cuts(mu_contained, mu_tracker, mu_ecal, reco_numu, Ehad_veto):
     """
     Model was trained only on data that passes these cuts. Predictions are only good for events
@@ -111,6 +125,12 @@ def passes_sel_cuts(mu_contained, mu_tracker, mu_ecal, reco_numu, Ehad_veto):
     """
     return (mu_contained or mu_tracker or mu_ecal) and reco_numu and Ehad_veto > 30
 
+def gen_fd_vtx():
+    return tuple(
+        FD_VTX_MINMAX[i][0] + random.random() * (FD_VTX_MINMAX[i][1] - FD_VTX_MINMAX[i][0])
+        for i in range(3)
+    )
+
 # NOTE assumes batch size is 1
 def make_fd_preds(model, nd_recos):
     in_batch = torch.cat(nd_recos)
@@ -118,13 +138,14 @@ def make_fd_preds(model, nd_recos):
         try:
             pred_batch = model.generate(in_batch).numpy()
         except ValueError:
+            # Model is unstable and can fail for some inputs, just move on when this hapens
             return None, None
         pred_fd = pred_batch[0, len(ND_RECO_VARS):]
         pred_fd_cvn = pred_fd[:len(FD_RECO_CVN_VARS)]
         pred_fd_E = pred_fd[len(FD_RECO_CVN_VARS):]
     return pred_fd_cvn, pred_fd_E
 
-def write_fd_preds_to_branches(pred_fd_cvn=None, pred_fd_E=None):
+def write_fd_preds_to_branches(pred_fd_cvn=None, pred_fd_E=None, fd_vtx=None):
     """
     Uses all b_* variables as globals.
     """
@@ -148,6 +169,14 @@ def write_fd_preds_to_branches(pred_fd_cvn=None, pred_fd_E=None):
         b_numu_lep_E[0] = -999.0
         b_nue_nu_E[0] = -999.0
         b_numu_nu_E[0] = -999.0
+    if fd_vtx is not None:
+        b_vtx_x[0] = fd_vtx[0]
+        b_vtx_y[0] = fd_vtx[1]
+        b_vtx_z[0] = fd_vtx[2]
+    else:
+        b_vtx_x[0] = -9999.0
+        b_vtx_y[0] = -9999.0
+        b_vtx_z[0] = -9999.0
 
 """ end helpers """
 
