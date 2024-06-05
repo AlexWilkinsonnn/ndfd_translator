@@ -18,6 +18,7 @@ input_file=$(ifdh ls $INPUT_ND_CAF_DIR | head -n $((PROCESS+2)) | tail -n -1)
 input_name=${input_file##*/}
 input_name=${input_name%.*}
 input_name="${input_name}_fdrecpred.root"
+echo "Processing ${input_file}"
 ifdh cp $input_file $input_name
 
 ls -lrth
