@@ -25,4 +25,10 @@ ls -lrth
 
 python ndfd_translate_caf.py $input_name model_weights/model_fhc_numu-numu_oldg4params.pt
 
-ifdh cp $input_name ${OUTPUT_ND_CAF_DIR}/$input_name
+if [[ $? == 0 ]]
+then
+  ifdh cp $input_name ${OUTPUT_ND_CAF_DIR}/$input_name
+else
+  echo "Python script exited badly!"
+  echo "Not copying $input_name to $OUTPUT_ND_CAF_DIR"
+fi
