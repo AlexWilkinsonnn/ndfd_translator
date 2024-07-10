@@ -25,7 +25,7 @@ ls -lrth
 
 python ndfd_translate_caf.py --vertices_file bin/train_vertices.npy \
                              $input_name \
-                             bin/model_weights/model_fhc_numu-numu_oldg4params.pt
+                             bin/model_weights/model_fhc_numu-numu_oldg4params_fixedEhadcut.pt
 
 if [[ $? == 0 ]]
 then
