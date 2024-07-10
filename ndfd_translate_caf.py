@@ -25,8 +25,8 @@ ND_RECO_VARS = [
     'reco_numu', 'reco_nc', 'reco_nue', 'reco_lepton_pdg',
     'fd_x_vert', 'fd_y_vert', 'fd_z_vert'
 ]
-FD_RECO_CVN_VARS = [ 'fd_numu_score', 'fd_nue_score', 'fd_nc_score', 'fd_nutau_score' ]
-FD_RECO_E_VARS = [ 'fd_nue_lep_E', 'fd_numu_lep_E', 'fd_numu_nu_E', 'fd_nue_nu_E' ]
+FD_RECO_CVN_VARS = [ 'fd_numu_score' ]
+FD_RECO_E_VARS = [ 'fd_numu_nu_E', 'fd_numu_lep_E', 'fd_numu_had_E' ]
 
 FD_VTX_MINMAX = [ (-310.0, 310.0), (-550.0, 550.0), (50.0, 1244.0) ]
 
@@ -45,27 +45,15 @@ def main(args):
     global b_numu_score
     b_numu_score = array("f", [0])
     t_pred.Branch("pred_fd_numu_score", b_numu_score, "pred_fd_numu_score/F")
-    global b_nue_score
-    b_nue_score = array("f", [0])
-    t_pred.Branch("pred_fd_nue_score", b_nue_score, "pred_fd_nue_score/F")
-    global b_nc_score
-    b_nc_score = array("f", [0])
-    t_pred.Branch("pred_fd_nc_score", b_nc_score, "pred_fd_nc_score/F")
-    global b_nutau_score
-    b_nutau_score = array("f", [0])
-    t_pred.Branch("pred_fd_nutau_score", b_nutau_score, "pred_fd_nutau_score/F")
-    global b_nue_lep_E
-    b_nue_lep_E = array("f", [0])
-    t_pred.Branch("pred_fd_nue_lep_E", b_nue_lep_E, "pred_fd_nue_lep_E/F")
-    global b_numu_lep_E
-    b_numu_lep_E = array("f", [0])
-    t_pred.Branch("pred_fd_numu_lep_E", b_numu_lep_E, "pred_fd_numu_lep_E/F")
-    global b_nue_nu_E
-    b_nue_nu_E = array("f", [0])
-    t_pred.Branch("pred_fd_nue_nu_E", b_nue_nu_E, "pred_fd_nue_nu_E/F")
     global b_numu_nu_E
     b_numu_nu_E = array("f", [0])
     t_pred.Branch("pred_fd_numu_nu_E", b_numu_nu_E, "pred_fd_numu_nu_E/F")
+    global b_numu_lep_E
+    b_numu_lep_E = array("f", [0])
+    t_pred.Branch("pred_fd_numu_lep_E", b_numu_lep_E, "pred_fd_numu_lep_E/F")
+    global b_numu_had_E
+    b_numu_had_E = array("f", [0])
+    t_pred.Branch("pred_fd_numu_had_E", b_numu_had_E, "pred_fd_numu_had_E/F")
     global b_vtx_x
     b_vtx_x = array("f", [0])
     t_pred.Branch("pred_fd_vtx_x", b_vtx_x, "pred_fd_vtx_x/F")
@@ -158,24 +146,16 @@ def write_fd_preds_to_branches(pred_fd_cvn=None, pred_fd_E=None, fd_vtx=None):
     """
     if pred_fd_cvn is not None:
         b_numu_score[0] = pred_fd_cvn[0]
-        b_nue_score[0] = pred_fd_cvn[1]
-        b_nc_score[0] = pred_fd_cvn[2]
-        b_nutau_score[0] = pred_fd_cvn[3]
     else:
         b_numu_score[0] = -999.0
-        b_nue_score[0] = -999.0
-        b_nc_score[0] = -999.0
-        b_nutau_score[0] = -999.0
     if pred_fd_E is not None:
-        b_nue_lep_E[0] = pred_fd_E[0]
+        b_numu_nu_E[0] = pred_fd_E[0]
         b_numu_lep_E[0] = pred_fd_E[1]
-        b_nue_nu_E[0] = pred_fd_E[2]
-        b_numu_nu_E[0] = pred_fd_E[3]
+        b_numu_had_E[0] = pred_fd_E[2]
     else:
-        b_nue_lep_E[0] = -999.0
-        b_numu_lep_E[0] = -999.0
-        b_nue_nu_E[0] = -999.0
         b_numu_nu_E[0] = -999.0
+        b_numu_lep_E[0] = -999.0
+        b_numu_had_E[0] = -999.0
     if fd_vtx is not None:
         b_vtx_x[0] = fd_vtx[0]
         b_vtx_y[0] = fd_vtx[1]
