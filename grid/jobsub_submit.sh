@@ -23,7 +23,9 @@ ifdh cp $input_file $input_name
 
 ls -lrth
 
-python ndfd_translate_caf.py $input_name model_weights/model_fhc_numu-numu_oldg4params.pt
+python ndfd_translate_caf.py --vertices_file bin/train_vertices.npy \
+                             $input_name \
+                             bin/model_weights/model_fhc_numu-numu_oldg4params.pt
 
 if [[ $? == 0 ]]
 then
