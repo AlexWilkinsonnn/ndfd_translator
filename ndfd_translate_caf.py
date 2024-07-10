@@ -9,6 +9,7 @@ import argparse, time, random
 from array import array
 
 import ROOT
+import numpy as np
 
 import torch
 
@@ -32,6 +33,9 @@ FD_VTX_MINMAX = [ (-310.0, 310.0), (-550.0, 550.0), (50.0, 1244.0) ]
 def main(args):
     # Prep model
     model = get_model(args.model_weights)
+
+    # Prep vertices
+    fd_vertices = np.load(args.vertices_file) if args.vertices_file is not None else None
 
     # Prep TTrees
     in_f = ROOT.TFile.Open(args.infile, "UPDATE")
@@ -76,7 +80,7 @@ def main(args):
     nd_recos = []
     t_0 = time.time()
     for i_ev, ev in enumerate(t_caf):
-        fd_vtx = gen_fd_vtx()
+        fd_vtx = gen_fd_vtx(fd_vertices)
         nd_recos.append(torch.tensor([[
             ev.eRecoP, ev.eRecoN, ev.eRecoPip, ev.eRecoPim, ev.eRecoPi0, ev.eRecoOther,
             ev.Ev_reco,
@@ -123,13 +127,16 @@ def passes_sel_cuts(mu_contained, mu_tracker, mu_ecal, reco_numu, Ehad_veto):
     with the same cuts. The model is also unstable and sometimes crashed if the events dont have
     these cuts applied.
     """
-    return (mu_contained or mu_tracker or mu_ecal) and reco_numu and Ehad_veto > 30
+    return (mu_contained or mu_tracker or mu_ecal) and reco_numu and Ehad_veto < 30
 
-def gen_fd_vtx():
-    return tuple(
-        FD_VTX_MINMAX[i][0] + random.random() * (FD_VTX_MINMAX[i][1] - FD_VTX_MINMAX[i][0])
-        for i in range(3)
-    )
+def gen_fd_vtx(fd_vertices):
+    if fd_vertices is None:
+        return tuple(
+            FD_VTX_MINMAX[i][0] + random.random() * (FD_VTX_MINMAX[i][1] - FD_VTX_MINMAX[i][0])
+            for i in range(3)
+        )
+    else:
+        return tuple(fd_vertices[np.random.randint(0, len(fd_vertices))])
 
 # NOTE assumes batch size is 1
 def make_fd_preds(model, nd_recos):
@@ -187,6 +194,12 @@ def parse_arguments():
         "infile", type=str, help="input ND CAF file for friend FD pred tree to be added to"
     )
     parser.add_argument("model_weights", type=str)
+    # Potentially needed because the geometric efficiency FD throws did not generate a
+    # smooth uniform distribution of vertices
+    parser.add_argument(
+        "--vertices_file", type=str, default=None,
+        help="numpy array of shape (N, 3) that contains vertices to randomly draw from"
+    )
 
     return parser.parse_args()
 
