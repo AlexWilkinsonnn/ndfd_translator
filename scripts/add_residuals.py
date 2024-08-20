@@ -1,7 +1,7 @@
 """
-Reads in npz with truth and predictions for the paired data test dataset, writes these to a
-new TTree in the inputted file. This will be used to make a resolution matrix so that an
-appropriate MC correction can be applied in the analysis.
+Reads in npz with truth and predictions for the paired data test dataset, writes these to a new
+TTree. This will be used to make a resolution matrix so that an appropriate MC correction can be
+applied in the analysis.
 """
 import argparse
 from array import array
@@ -16,7 +16,8 @@ def main(args):
     test_trues = data["true_fd_numu_nuE"]
 
     # Prep TTrees
-    in_f = ROOT.TFile.Open(args.outfile, "RECREATE")
+    # in_f = ROOT.TFile.Open(args.outfile, "RECREATE")
+    in_f = ROOT.TFile.Open(args.infile, "UPDATE")
     t_test = ROOT.TTree("FDModelTestPreds", "FDModelTestPreds")
 
     global b_pred_fd_numu_nu_E
@@ -41,8 +42,11 @@ def main(args):
 def parse_arguments():
     parser = argparse.ArgumentParser()
 
+    # parser.add_argument(
+    #     "outfile", type=str, help="output ROOT file for test data predictions"
+    # )
     parser.add_argument(
-        "outfile", type=str, help="output ROOT file for test data predictions"
+        "infile", type=str, help="input ND CAF file for test data predictions"
     )
     parser.add_argument(
         "test_preds", type=str, help="input npz file with test set predictions and truth"
