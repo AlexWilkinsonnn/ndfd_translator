@@ -18,14 +18,19 @@ Now you have the virtual environment, just do `source setup.sh`.
 ## Usage
 
 ```
-usage: ndfd_translate_caf.py [-h] infile model_weights
+usage: ndfd_translate_caf.py [-h] [--model_config MODEL_CONFIG] [--vertices_file VERTICES_FILE] infile model_weights
 
 positional arguments:
-  infile         input ND CAF file for friend FD pred tree to be added to
+  infile                input ND CAF file for friend FD pred tree to be added to
   model_weights
 
 optional arguments:
-  -h, --help     show this help message and exit
+  -h, --help            show this help message and exit
+  --model_config MODEL_CONFIG
+                        Model config json, required if model uses a non-default set of hyperparams
+  --vertices_file VERTICES_FILE
+                        numpy array of shape (N, 3) that contains vertices to randomly draw from
+
 ```
 
 ## Grid jobs
@@ -35,15 +40,15 @@ Make a tarball of these files:
 ndfd_translate_caf.py
 model.py
 utils.py
-model_weights/
+bin/
 ```
 
 Submit to the grid with:
 ```
-jobsub_submit -G dune -N <N> --disk=10Gb --memory=6000MB --expected-lifetime=24h --cpu=8 --resource-provides=usage_model=DEDICATED,OPPORTUNISTIC,OFFSITE --tar_file_name=dropbox://<path_to_repo>/jobdata.tar.gz --use-cvmfs-dropbox --singularity-image /cvmfs/singularity.opensciencegrid.org/fermilab/fnal-wn-sl7:latest --append_condor_requirements='(TARGET.HAS_Singularity==true&&TARGET.HAS_CVMFS_dune_opensciencegrid_org==true&&TARGET.HAS_CVMFS_larsoft_opensciencegrid_org==true&&TARGET.CVMFS_dune_opensciencegrid_org_REVISION>=1105&&TARGET.HAS_CVMFS_fifeuser1_opensciencegrid_org==true&&TARGET.HAS_CVMFS_fifeuser2_opensciencegrid_org==true&&TARGET.HAS_CVMFS_fifeuser3_opensciencegrid_org==true&&TARGET.HAS_CVMFS_fifeuser4_opensciencegrid_org==true)' --lines '+FERMIHTC_AutoRelease=True' --lines '+FERMIHTC_GraceMemory=2048' --lines '+FERMIHTC_GraceLifetime=7200' file://<path_to_repo>/grid/jobsub_submit.sh <input_dir> <output_dir>
+jobsub_submit -G dune -N <N> --disk=10Gb --memory=6000MB --expected-lifetime=72h --cpu=8 --resource-provides=usage_model=DEDICATED,OPPORTUNISTIC,OFFSITE --tar_file_name=dropbox://<path_to_repo>/jobdata.tar.gz --use-cvmfs-dropbox --singularity-image /cvmfs/singularity.opensciencegrid.org/fermilab/fnal-wn-sl7:latest --append_condor_requirements='(TARGET.HAS_Singularity==true&&TARGET.HAS_CVMFS_dune_opensciencegrid_org==true&&TARGET.HAS_CVMFS_larsoft_opensciencegrid_org==true&&TARGET.CVMFS_dune_opensciencegrid_org_REVISION>=1105&&TARGET.HAS_CVMFS_fifeuser1_opensciencegrid_org==true&&TARGET.HAS_CVMFS_fifeuser2_opensciencegrid_org==true&&TARGET.HAS_CVMFS_fifeuser3_opensciencegrid_org==true&&TARGET.HAS_CVMFS_fifeuser4_opensciencegrid_org==true)' --lines '+FERMIHTC_AutoRelease=True' --lines '+FERMIHTC_GraceMemory=2048' --lines '+FERMIHTC_GraceLifetime=7200' file://<path_to_repo>/grid/jobsub_submit.sh <input_dir> <output_dir>
 ```
 Replacing `<N>` with the number of ND CAF files in the input directory, and `<path_to_repo>,<input_dir>,<output_dir>` with your paths.
 
 ## Notes
 
-- If we want to use different architectures or different ND/FD reco vars the code will need to be updated. We should refactor a bit to accomodate this more easily.
+- If we want to use different architectures or different ND/FD reco vars the code will need to be updated. We should refactor a bit to accomodate this more easily. **Update:** the model config json is now an input to `ndfd_translate_caf.py` script, so only changes to the ND/FD reoc vars used needs to be hardcoded in.
