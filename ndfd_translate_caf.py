@@ -10,6 +10,7 @@ from array import array
 
 import ROOT
 import numpy as np
+import json
 
 import torch
 
@@ -18,21 +19,21 @@ from model import GPT
 # This the order we assume the input/output tensors to the model correspond to.
 # These variables are mainly for reference.
 ND_RECO_VARS = [
-    'eRecoP', 'eRecoN', 'eRecoPip', 'eRecoPim', 'eRecoPi0', 'eRecoOther',
+    'eRecoP', 'eRecoPip', 'eRecoPim', 'eRecoPi0', 'eRecoOther',
     'Ev_reco',
     'Elep_reco',
     'theta_reco',
     'reco_numu', 'reco_nc', 'reco_nue', 'reco_lepton_pdg',
     'fd_x_vert', 'fd_y_vert', 'fd_z_vert'
 ]
-FD_RECO_CVN_VARS = [ 'fd_numu_score' ]
+FD_RECO_CVN_VARS = [ 'fd_numu_score', 'fd_nue_score', 'fd_nc_score', 'fd_nutau_score' ]
 FD_RECO_E_VARS = [ 'fd_numu_nu_E', 'fd_numu_lep_E', 'fd_numu_had_E' ]
 
 FD_VTX_MINMAX = [ (-310.0, 310.0), (-550.0, 550.0), (50.0, 1244.0) ]
 
 def main(args):
     # Prep model
-    model = get_model(args.model_weights)
+    model = get_model(args.model_weights, args.model_config)
 
     # Prep vertices
     fd_vertices = np.load(args.vertices_file) if args.vertices_file is not None else None
@@ -70,7 +71,7 @@ def main(args):
     for i_ev, ev in enumerate(t_caf):
         fd_vtx = gen_fd_vtx(fd_vertices)
         nd_recos.append(torch.tensor([[
-            ev.eRecoP, ev.eRecoN, ev.eRecoPip, ev.eRecoPim, ev.eRecoPi0, ev.eRecoOther,
+            ev.eRecoP, ev.eRecoPip, ev.eRecoPim, ev.eRecoPi0, ev.eRecoOther,
             ev.Ev_reco,
             ev.Elep_reco,
             ev.theta_reco,
@@ -97,9 +98,16 @@ def main(args):
 
 """ helpers """
 
-def get_model(model_weights):
+def get_model(model_weights, model_config_path):
     conf = GPT.get_default_config()
     conf.model_type = 'gpt-mini'
+    if model_config_path is not None:
+        with open(model_config_path, "r") as f:
+            model_config = json.load(f)["model"]
+        conf.n_gaussians = model_config["n_gaussians"]
+        conf.embd_pdrop = model_config["embd_pdrop"]
+        conf.resid_pdrop = model_config["resid_pdrop"]
+        conf.attn_pdrop = model_config["attn_pdrop"]
     conf.block_size = len(ND_RECO_VARS) + len(FD_RECO_CVN_VARS) + len(FD_RECO_E_VARS) + 1
     conf.scores_size = len(FD_RECO_CVN_VARS)
     conf.far_reco_size = len(FD_RECO_E_VARS)
@@ -174,6 +182,11 @@ def parse_arguments():
         "infile", type=str, help="input ND CAF file for friend FD pred tree to be added to"
     )
     parser.add_argument("model_weights", type=str)
+    parser.add_argument(
+        "--model_config",
+        type=str, default=None,
+        help="Model config json, required if model uses a non-default set of hyperparams"
+    )
     # Potentially needed because the geometric efficiency FD throws did not generate a
     # smooth uniform distribution of vertices
     parser.add_argument(
