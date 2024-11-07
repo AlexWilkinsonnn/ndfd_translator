@@ -27,9 +27,9 @@ ls -lrth
 
 # Do the translation
 python ndfd_translate_caf.py --vertices_file bin/train_vertices.npy \
-                             --model_config bin/models/config_fhc_numu-numu_muresim.json \
+                             --model_config bin/models/config_fhc_numu-numu_muresim_oscsampling.json \
                              $input_name \
-                             bin/models/model_fhc_numu-numu_muresim.pt
+                             bin/models/model_fhc_numu-numu_muresim_oscsampling.pt
 
 # Copy file back if translation exitted successfully
 if [[ $? == 0 ]]
