@@ -23,7 +23,7 @@ ND_RECO_VARS = [
     'Ev_reco',
     'Elep_reco',
     'theta_reco',
-    'reco_numu', 'reco_nc', 'reco_nue',
+    'reco_numu', 'reco_nc', 'reco_nue', 'reco_lepton_pdg',
     'fd_x_vert', 'fd_y_vert', 'fd_z_vert'
 ]
 FD_RECO_CVN_VARS = [ 'fd_numu_score', 'fd_nue_score', 'fd_nc_score', 'fd_nutau_score' ]
