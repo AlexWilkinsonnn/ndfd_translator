@@ -23,7 +23,7 @@ ND_RECO_VARS = [
     'Ev_reco',
     'Elep_reco',
     'theta_reco',
-    'reco_numu', 'reco_nc', 'reco_nue', 'reco_lepton_pdg',
+    'reco_numu', 'reco_nc', 'reco_nue',
     'fd_x_vert', 'fd_y_vert', 'fd_z_vert'
 ]
 FD_RECO_CVN_VARS = [ 'fd_numu_score', 'fd_nue_score', 'fd_nc_score', 'fd_nutau_score' ]
@@ -75,7 +75,7 @@ def main(args):
             ev.Ev_reco,
             ev.Elep_reco,
             ev.theta_reco,
-            ev.reco_numu, ev.reco_nc, ev.reco_nue, ev.reco_lepton_pdg,
+            ev.reco_numu, ev.reco_nc, ev.reco_nue,
             fd_vtx[0], fd_vtx[1], fd_vtx[2]
         ]]))
         pred_fd_cvn, pred_fd_E = make_fd_preds(model, nd_recos)
