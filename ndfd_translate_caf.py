@@ -138,11 +138,16 @@ def gen_fd_vtx(fd_vertices):
 def make_fd_preds(model, nd_recos):
     in_batch = torch.cat(nd_recos)
     with torch.no_grad():
-        try:
-            pred_batch = model.generate(in_batch).numpy()
-        except ValueError:
-            # Model is unstable and can fail for some inputs, just move on when this hapens
-            return None, None
+        # Model is unstable and can fail sporadically
+        n_try = 0
+        while True:
+            n_try += 1
+            try:
+                pred_batch = model.generate(in_batch).numpy()
+                break
+            except ValueError:
+                if n_try > 5:
+                    return None, None
         pred_fd = pred_batch[0, len(ND_RECO_VARS):]
         pred_fd_cvn = pred_fd[:len(FD_RECO_CVN_VARS)]
         pred_fd_E = pred_fd[len(FD_RECO_CVN_VARS):]
