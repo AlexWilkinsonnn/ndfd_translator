@@ -17,16 +17,17 @@ import torch
 from model import GPT
 
 # This the order we assume the input/output tensors to the model correspond to.
-# These variables are mainly for reference.
+# The variable names are just for reference, these strings aren't actually used in this code.
 ND_RECO_VARS = [
-    'eRecoP', 'eRecoPip', 'eRecoPim', 'eRecoPi0', 'eRecoOther',
-    'Ev_reco',
-    'Elep_reco',
-    'theta_reco',
-    'reco_numu', 'reco_nc', 'reco_nue', 'reco_lepton_pdg',
-    'fd_x_vert', 'fd_y_vert', 'fd_z_vert'
+    'nP', 'nipipm', 'nikpm', 'nipi0', 'nik0', 'niem', 'niother',
+    'eRecoP', 'eRecoPipm', 'eRecoPi0', 'eRecoOther',
+    'Ev_reco', 'Elep_reco', 'theta_reco',
+    'muon_tracker', 'muon_contained', 'Ehad_veto',
+    'fd_x_vert_fv_mindist',
+    'fd_y_vert_fv_mindist',
+    'fd_z_vert_fv_frontdist', 'fd_z_vert_fv_backdist'
 ]
-FD_RECO_CVN_VARS = [ 'fd_numu_score', 'fd_nue_score', 'fd_nc_score', 'fd_nutau_score' ]
+FD_RECO_CVN_VARS = [ 'fd_numu_score' ]
 FD_RECO_E_VARS = [ 'fd_numu_nu_E', 'fd_numu_lep_E', 'fd_numu_had_E' ]
 
 FD_VTX_MINMAX = [ (-310.0, 310.0), (-550.0, 550.0), (50.0, 1244.0) ]
@@ -71,12 +72,13 @@ def main(args):
     for i_ev, ev in enumerate(t_caf):
         fd_vtx = gen_fd_vtx(fd_vertices)
         nd_recos.append(torch.tensor([[
-            ev.eRecoP, ev.eRecoPip, ev.eRecoPim, ev.eRecoPi0, ev.eRecoOther,
-            ev.Ev_reco,
-            ev.Elep_reco,
-            ev.theta_reco,
-            ev.reco_numu, ev.reco_nc, ev.reco_nue,
-            fd_vtx[0], fd_vtx[1], fd_vtx[2]
+            ev.nP, ev.nipip + ev.nipim, ev.nikp + ev.nikm, ev.nipi0, ev.nik0, ev.niem, ev.niother,
+            ev.eRecoP, ev.eRecoPip + ev.eRecoPim, ev.eRecoPi0, ev.eRecoOther,
+            ev.Ev_reco, ev.Elep_reco, ev.theta_reco,
+            ev.muon_tracker, ev.muon_contained, ev.Ehad_veto,
+            310 - abs(fd_vtx[0]),
+            550 - abs(fd_vtx[1]),
+            fd_vtx[2] - 50, 1244 - fd_vtx[2]
         ]]))
         pred_fd_cvn, pred_fd_E = make_fd_preds(model, nd_recos)
         write_fd_preds_to_branches(pred_fd_cvn, pred_fd_E, fd_vtx)
