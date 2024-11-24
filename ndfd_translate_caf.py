@@ -71,15 +71,18 @@ def main(args):
     t_0 = time.time()
     for i_ev, ev in enumerate(t_caf):
         fd_vtx = gen_fd_vtx(fd_vertices)
-        nd_recos.append(torch.tensor([[
-            ev.nP, ev.nipip + ev.nipim, ev.nikp + ev.nikm, ev.nipi0, ev.nik0, ev.niem, ev.niother,
-            ev.eRecoP, ev.eRecoPip + ev.eRecoPim, ev.eRecoPi0, ev.eRecoOther,
-            ev.Ev_reco, ev.Elep_reco, ev.theta_reco,
-            ev.muon_tracker, ev.muon_contained, ev.Ehad_veto,
-            310 - abs(fd_vtx[0]),
-            550 - abs(fd_vtx[1]),
-            fd_vtx[2] - 50, 1244 - fd_vtx[2]
-        ]]))
+        nd_recos.append(torch.tensor(
+            [[
+                ev.nP, ev.nipip + ev.nipim, ev.nikp + ev.nikm, ev.nipi0, ev.nik0, ev.niem, ev.niother,
+                ev.eRecoP, ev.eRecoPip + ev.eRecoPim, ev.eRecoPi0, ev.eRecoOther,
+                ev.Ev_reco, ev.Elep_reco, ev.theta_reco,
+                ev.muon_tracker, ev.muon_contained, ev.Ehad_veto,
+                310 - abs(fd_vtx[0]),
+                550 - abs(fd_vtx[1]),
+                fd_vtx[2] - 50, 1244 - fd_vtx[2]
+            ]],
+            dtype=torch.float
+        ))
         pred_fd_cvn, pred_fd_E = make_fd_preds(model, nd_recos)
         write_fd_preds_to_branches(pred_fd_cvn, pred_fd_E, fd_vtx)
         t_pred.Fill()
