@@ -32,6 +32,10 @@ FD_RECO_E_VARS = [ 'fd_numu_nu_E', 'fd_numu_lep_E', 'fd_numu_had_E' ]
 
 FD_VTX_MINMAX = [ (-310.0, 310.0), (-550.0, 550.0), (50.0, 1244.0) ]
 
+# When not using log-norms, the predicted energy can be negative. This option will resample the
+# distribution until a positive value is returned.
+RESAMPLE_ON_NEGATIVE = True
+
 def main(args):
     # Prep model
     model = get_model(args.model_weights, args.model_config)
@@ -143,19 +147,21 @@ def gen_fd_vtx(fd_vertices):
 def make_fd_preds(model, nd_recos):
     in_batch = torch.cat(nd_recos)
     with torch.no_grad():
-        # Model is unstable and can fail sporadically
         n_try = 0
         while True:
             n_try += 1
             try:
                 pred_batch = model.generate(in_batch).numpy()
+                pred_fd = pred_batch[0, len(ND_RECO_VARS):]
+                pred_fd_cvn = pred_fd[:len(FD_RECO_CVN_VARS)]
+                pred_fd_E = pred_fd[len(FD_RECO_CVN_VARS):]
+                if RESAMPLE_ON_NEGATIVE and np.any(pred_fd_E < 0.0):
+                    continue
                 break
-            except ValueError:
-                if n_try > 5:
+            except ValueError: # Model is unstable and can fail sporadically
+                if n_try > 20:
                     return None, None
-        pred_fd = pred_batch[0, len(ND_RECO_VARS):]
-        pred_fd_cvn = pred_fd[:len(FD_RECO_CVN_VARS)]
-        pred_fd_E = pred_fd[len(FD_RECO_CVN_VARS):]
+
     return pred_fd_cvn, pred_fd_E
 
 def write_fd_preds_to_branches(pred_fd_cvn=None, pred_fd_E=None, fd_vtx=None):
