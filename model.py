@@ -44,8 +44,15 @@ class CausalSelfAttention(nn.Module):
         self.attn_dropout = nn.Dropout(config.attn_pdrop)
         self.resid_dropout = nn.Dropout(config.resid_pdrop)
         # causal mask to ensure that attention is only applied to the left in the input sequence
-        self.register_buffer("bias", torch.tril(torch.ones(config.block_size, config.block_size))
-                                     .view(1, 1, config.block_size, config.block_size))
+        mask = torch.tril(torch.ones(config.block_size, config.block_size))
+        if config.no_causal_near_mask:
+            # Dont apply the causal mask to the near reco
+            mask[:config.near_reco_size, :config.near_reco_size] += (
+                torch.tril(torch.ones(config.near_reco_size, config.near_reco_size), -1).T
+            )
+            self.register_buffer("bias", mask.view(1, 1, config.block_size, config.block_size))
+        else:
+            self.register_buffer("bias", mask.view(1, 1, config.block_size, config.block_size))
         self.n_head = config.n_head
         self.n_embd = config.n_embd
 
@@ -107,8 +114,10 @@ class GPT(nn.Module):
         C.n_gaussians = 42
         C.vocab_size = None
         C.block_size = None
+        C.near_reco_size = None
         C.scores_size = None
         C.far_reco_size = None
+        C.no_causal_near_mask = False
         # dropout hyperparameters
         C.embd_pdrop = 0.0
         C.resid_pdrop = 0.1
@@ -147,7 +156,7 @@ class GPT(nn.Module):
                 'gpt-nano':     dict(n_layer=3, n_head=3, n_embd=48),
             }[config.model_type]) #very verbose, can simplify
 
-        
+
         self.transformer = nn.ModuleDict(dict(
             wte = nn.Linear(1, config.n_embd), # is this stupid? linear layer instead of a token embedding
             wpe = nn.Embedding(config.block_size, config.n_embd),
@@ -226,7 +235,7 @@ class GPT(nn.Module):
     def forward(self, idx, targets=None):
         device = idx.device
         b, t = idx.size()
-    
+
         assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
         pos = torch.arange(0, t, dtype=torch.long, device=device).unsqueeze(0) # shape (1, t)
 
@@ -238,13 +247,12 @@ class GPT(nn.Module):
         for block in self.transformer.h:
             x = block(x)
 
-
         x = self.transformer.ln_f(x)
         output = self.lm_head(x) # (batch_size, n_objects, 3*n_gaussians)
-        not_near = self.scores_size + self.far_reco_size 
+        not_near = self.scores_size + self.far_reco_size
         output = output[:, -not_near:, :] #get rid of all tokens that correspond to near detector
         batch_size, n_objects, n_gaussians = output.shape
-        # this is a huge mess 
+        # this is a huge mess
         output = output.reshape(batch_size, n_objects, int(n_gaussians/3), 3)
         scores_output = output[:, :self.scores_size, :, :]
         far_reco_output = output[:, self.scores_size:, :, :]
@@ -259,7 +267,7 @@ class GPT(nn.Module):
             far_reco_loss = -far_reco_mixture.log_prob(targets[:, self.scores_size:]).mean()
             loss = scores_loss + far_reco_loss
             return output, loss
-        
+
         return output
 
     def compute_mixture(self, output, transform=False):
@@ -288,7 +296,7 @@ class GPT(nn.Module):
         output = self.forward(idx)
         gaussian_mixture = self.compute_mixture(output)
         return gaussian_mixture.log_prob(targets)
-    
+
     @torch.no_grad()
     def log_probability(self, idx, targets):
         """
@@ -309,14 +317,14 @@ class GPT(nn.Module):
 
         inner_idx = 0
         for i in range(start_dim, num_dims):
-            
+
             output = self.forward(x)
             output = output[:,-1, :, :].unsqueeze(1)
             transform = False
             if inner_idx <= self.scores_size - 1:
                 transform = True # first 4 dimensions are scores
             gaussian_mixture = self.compute_mixture(output, transform=transform)
-            
+
             x_next = gaussian_mixture.sample()
             x = torch.cat((x, x_next), dim=1)
 

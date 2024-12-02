@@ -117,7 +117,10 @@ def get_model(model_weights, model_config_path):
         conf.embd_pdrop = model_config["embd_pdrop"]
         conf.resid_pdrop = model_config["resid_pdrop"]
         conf.attn_pdrop = model_config["attn_pdrop"]
+        if "no_causal_near_mask" in model_config.keys():
+            conf.no_causal_near_mask = model_config["no_causal_near_mask"]
     conf.block_size = len(ND_RECO_VARS) + len(FD_RECO_CVN_VARS) + len(FD_RECO_E_VARS) + 1
+    conf.near_reco_size = len(ND_RECO_VARS)
     conf.scores_size = len(FD_RECO_CVN_VARS)
     conf.far_reco_size = len(FD_RECO_E_VARS)
     model = GPT(conf)
