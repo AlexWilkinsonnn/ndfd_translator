@@ -109,23 +109,40 @@ def main(args):
 
 def get_model(model_weights, model_config_path):
     conf = GPT.get_default_config()
+
     conf.model_type = 'gpt-mini'
+
     if model_config_path is not None:
         with open(model_config_path, "r") as f:
-            model_config = json.load(f)["model"]
+            config = json.load(f)
+
+        if "dataset" in config.keys():
+            dataset_config = config["dataset"]
+            if "near_reco_preset" in dataset_config.keys():
+                assert dataset_config["near_reco_preset"] == "noN_sensible3"
+            if "far_reco_preset" in dataset_config.keys():
+                assert dataset_config["far_reco_preset"] == "cvn1"
+
+        model_config = config["model"]
+
         conf.n_gaussians = model_config["n_gaussians"]
         conf.embd_pdrop = model_config["embd_pdrop"]
         conf.resid_pdrop = model_config["resid_pdrop"]
         conf.attn_pdrop = model_config["attn_pdrop"]
         if "no_causal_near_mask" in model_config.keys():
             conf.no_causal_near_mask = model_config["no_causal_near_mask"]
+        if "clamp_guassian_params" in model_config.keys():
+            conf.clamp_guassian_params = model_config["clamp_guassian_params"]
+
     conf.block_size = len(ND_RECO_VARS) + len(FD_RECO_CVN_VARS) + len(FD_RECO_E_VARS) + 1
     conf.near_reco_size = len(ND_RECO_VARS)
     conf.scores_size = len(FD_RECO_CVN_VARS)
     conf.far_reco_size = len(FD_RECO_E_VARS)
+
     model = GPT(conf)
     model.load_state_dict(torch.load(model_weights, map_location=torch.device('cpu')))
     model.eval()
+
     return model
 
 # XXX Not using this anymore, can just apply selection cuts afterwards
