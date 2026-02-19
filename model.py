@@ -122,6 +122,8 @@ class GPT(nn.Module):
         C.embd_pdrop = 0.0
         C.resid_pdrop = 0.1
         C.attn_pdrop = 0.1
+        # misc
+        C.clamp_gaussian_params = False
         return C
 
     def __init__(self, config):
@@ -132,6 +134,7 @@ class GPT(nn.Module):
         self.scores_size = config.scores_size
         self.far_reco_size = config.far_reco_size
 
+        self.clamp_gaussian_params = config.clamp_gaussian_params
 
         type_given = config.model_type is not None
         params_given = all([config.n_layer is not None, config.n_head is not None, config.n_embd is not None])
@@ -273,8 +276,14 @@ class GPT(nn.Module):
     def compute_mixture(self, output, transform=False):
         mu = output[...,0]
         sigma = torch.exp(output[...,1]) # sigma>0 #paper givt uses softplus
-        weights = torch.nn.functional.softmax(output[...,2], dim=-1) # normalize weights
-        # temperature scale
+        if self.clamp_gaussian_params:
+            logits = output[..., 2]
+            logits = torch.clamp(logits, -30.0, 30.0)
+            weights = torch.softmax(logits, dim=-1)
+            sigma = torch.clamp(sigma, 1e-6, 1e3)
+        else:
+            weights = torch.nn.functional.softmax(output[...,2], dim=-1) # normalize weights
+
         # which mixture component to sample from
         mixture = torch.distributions.Categorical(weights)
 
